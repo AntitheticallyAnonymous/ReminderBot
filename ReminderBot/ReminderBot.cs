@@ -49,8 +49,11 @@ namespace ReminderBot
             _reminders = new ReminderHandler(_client);
             _client.MessageReceived += HandleCommandAsync;
 
-            await InitializeVariables();
+            await InitializeVariablesFromJson();
             await ConnectToDiscord();
+
+            //TODO 
+            //Start Alarms from previous instance
            
             //Blocks until program is closed
             await Task.Delay(-1);
@@ -58,29 +61,22 @@ namespace ReminderBot
 
         private async Task HandleCommandAsync(SocketMessage message)
         {
-            await _reminders.HandleCommand(message, _prefix);
+            await _reminders.HandleCommand(message, _prefix);           
         }
-        
-        private Task InitializeVariables()
-        {
-            JObject credentials;
 
+        /*
+         * Parses variables from json file
+         */
+        private Task InitializeVariablesFromJson()
+        {
             //If the credentials file doesn't exist, create it
             if (!File.Exists(Path.Combine(Environment.CurrentDirectory, "credentials.json")))
             {
-                credentials = new JObject(
-                new JProperty("ClientID", null),
-                new JProperty("BotID", null),
-                new JProperty("Token", null),
-                new JProperty("Owners", null),
-                new JProperty("Database", null),
-                new JProperty("Prefix", ".r"));
-
-                File.WriteAllText(@"credentials.json", credentials.ToString());
+                CreateDefaultCredentialsFile();
             }
 
-            //Get credential json file
-            credentials = JObject.Parse(File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "credentials.json")));
+            //Get credential.json
+            JObject credentials = JObject.Parse(File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "credentials.json")));
 
             //Check if bot's token is set so that it can connect to discord            
             if (credentials["Token"].Type == JTokenType.Null)
@@ -88,8 +84,9 @@ namespace ReminderBot
                 throw new System.ArgumentNullException("Missing Bot's Token in credentials.json");
             }
             _token = credentials["Token"].ToString();
-            
-            if (credentials["Prefix"].Type == JTokenType.Null)
+
+            //Check if the prefix for setting comands has been set
+            if (credentials["Prefix"].Type == JTokenType.Null || credentials["Prefix"].ToString().Trim(' ').Equals(""))
             {
                 throw new System.ArgumentNullException("Missing prefix for commands in credentials.json");
             }
@@ -97,7 +94,7 @@ namespace ReminderBot
 
             /* TODO: Implement the following credentials
              * Owner; Can be null
-             * Database; Can be null
+             * Database; Can be null (Saves to file)
              * BotID; TODO: Investigate uses for BotID
              * ClientID; TODO: Investigate uses for ClientID
              */
@@ -105,8 +102,30 @@ namespace ReminderBot
             return Task.CompletedTask;
         }
 
+        /* 
+         * Creates the default credentials.json file where information is stored
+         */
+        private void CreateDefaultCredentialsFile()
+        {
+            JObject credentials = new JObject(
+                new JProperty("ClientID", null),
+                new JProperty("BotID", null),
+                new JProperty("Token", null),
+                new JProperty("Owners", null),
+                new JProperty("Database", null),
+                new JProperty("Prefix", ".r"));
+
+            File.WriteAllText(@"credentials.json", credentials.ToString());
+        }
+
         private async Task ConnectToDiscord()
         {            
+            if(_token == null)
+            {
+                throw new System.ArgumentNullException("Bot's token is null. Either the value hasn't been set in " +
+                    "credentials.json or the value hasn't been parsed yet.");
+            }
+
             await _client.LoginAsync(TokenType.Bot, _token);
             await _client.StartAsync();
         }
