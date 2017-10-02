@@ -9,7 +9,7 @@ namespace ReminderBot
     class Alarm
     {
         public ulong alarmId { get; set; }
-        public string when { get; set; }
+        public DateTime when { get; set; }
         public string message { get; set; }
         public ulong userId { get; set; }
         public ulong channelId { get; set; }
@@ -19,9 +19,9 @@ namespace ReminderBot
 
         public Alarm(AlarmBuilder a)
         {            
-            if (String.IsNullOrEmpty(a.when))
+            if (default(DateTime) == a.when)
             {
-                throw new ArgumentNullException("Alarm cannot be set to a null/empty time. Check the construction of the alarm.");
+                throw new ArgumentNullException("An alarm has not been set or has been set to an invalid time");
             }
             if (a.message == null)
             {
