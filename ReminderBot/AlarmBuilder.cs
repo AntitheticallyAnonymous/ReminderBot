@@ -9,7 +9,7 @@ namespace ReminderBot
     class AlarmBuilder
     {
         public ulong alarmId { get; set; }
-        public string when { get; set; }
+        public DateTime when { get; set; }
         public string message { get; set; }
         public ulong userId { get; set; }
         public ulong channelId { get; set; }
@@ -26,17 +26,6 @@ namespace ReminderBot
 
         public AlarmBuilder When(DateTime w)
         {
-            this.when = w.ToString();
-            return this;
-        }
-
-        private AlarmBuilder When(string w)
-        {
-            if(String.IsNullOrEmpty(w))
-            {
-                throw new ArgumentNullException("Alarm cannot be set at an empty/null time. This shouldn't happen"); //Only called indirectly by the above polymorphed function
-            }
-            
             this.when = w;
             return this;
         }
