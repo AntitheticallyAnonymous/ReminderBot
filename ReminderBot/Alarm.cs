@@ -1,14 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ReminderBot
 {
     class Alarm
     {
-        public ulong alarmId { get; set; }
+        public int alarmId { get; set; }
         public DateTime when { get; set; }
         public string message { get; set; }
         public ulong userId { get; set; }
@@ -17,8 +13,9 @@ namespace ReminderBot
         public int repeat { get; set; }
         public bool started { get; set; }
 
+        public Alarm() { } //For serializing and deserializing; Probably not safe
         public Alarm(AlarmBuilder a)
-        {            
+        {
             if (default(DateTime) == a.when)
             {
                 throw new ArgumentNullException("An alarm has not been set or has been set to an invalid time");
@@ -35,7 +32,7 @@ namespace ReminderBot
             channelId = a.channelId;
             interval = a.interval;
             repeat = a.repeat;
-            started = false;            
+            started = false;
         }
     }
 }

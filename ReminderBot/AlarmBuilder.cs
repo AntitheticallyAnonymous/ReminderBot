@@ -1,24 +1,20 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ReminderBot
 {
     class AlarmBuilder
     {
-        public ulong alarmId { get; set; }
+        public int alarmId { get; set; }
         public DateTime when { get; set; }
         public string message { get; set; }
         public ulong userId { get; set; }
         public ulong channelId { get; set; }
         public int interval { get; set; }
-        public int repeat { get; set; }
-        
-        public AlarmBuilder(){} //In case more constructors are added
+        public int repeat { get; set; }        
 
-        public AlarmBuilder AlarmId(ulong a)
+        public AlarmBuilder() { } //In case more constructors are added
+
+        public AlarmBuilder AlarmId(int a)
         {
             this.alarmId = a;
             return this;
@@ -32,7 +28,7 @@ namespace ReminderBot
 
         public AlarmBuilder Message(string m)
         {
-            if(m == null)
+            if (m == null)
             {
                 m = "";
             }
