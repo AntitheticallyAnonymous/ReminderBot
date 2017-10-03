@@ -1,20 +1,17 @@
 ﻿using Discord;
-using Discord.WebSocket;
-using Discord.Net.Providers.UDPClient;
 using Discord.Net.Providers.WS4Net;
-
-
-using System;
-using System.Threading.Tasks;
-using System.IO;
+using Discord.WebSocket;
 using Newtonsoft.Json.Linq;
+using System;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace ReminderBot
 {
     class ReminderBot
     {
-        private readonly DiscordSocketClient _client;        
-        private ReminderHandler _reminders;
+        private readonly DiscordSocketClient _client;
+        private CommandHandler _reminders;
 
         //Values from json file
         private string _token;
@@ -24,9 +21,8 @@ namespace ReminderBot
         {
             _client = new DiscordSocketClient(new DiscordSocketConfig
             {
-                //Setup bot to work with .NET Standard 1.1
                 WebSocketProvider = WS4NetProvider.Instance,
-                UdpSocketProvider = UDPClientProvider.Instance,
+                //UdpSocketProvider = UDPClientProvider.Instance,
 
                 //Logging information to console
                 LogLevel = LogSeverity.Info,
@@ -46,7 +42,7 @@ namespace ReminderBot
             _client.Log += new Logger().Log;
 
             //Add command handler(s)
-            _reminders = new ReminderHandler(_client);
+            _reminders = new CommandHandler(_client);
             _client.MessageReceived += HandleCommandAsync;
 
             await InitializeVariablesFromJson();
@@ -54,14 +50,14 @@ namespace ReminderBot
 
             //TODO 
             //Start Alarms from previous instance
-           
+
             //Blocks until program is closed
             await Task.Delay(-1);
         }
 
         private async Task HandleCommandAsync(SocketMessage message)
-        {
-            await _reminders.HandleCommand(message, _prefix);           
+        {            
+            await _reminders.HandleCommand(message, _prefix);
         }
 
         /*
@@ -119,8 +115,8 @@ namespace ReminderBot
         }
 
         private async Task ConnectToDiscord()
-        {            
-            if(_token == null)
+        {
+            if (_token == null)
             {
                 throw new System.ArgumentNullException("Bot's token is null. Either the value hasn't been set in " +
                     "credentials.json or the value hasn't been parsed yet.");
@@ -131,3 +127,4 @@ namespace ReminderBot
         }
     }
 }
+

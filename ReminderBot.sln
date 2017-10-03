@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26430.16
+VisualStudioVersion = 15.0.26730.16
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReminderBot", "ReminderBot\ReminderBot.csproj", "{087E508F-8D61-4F7D-9C22-157877A7B6B6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReminderBot", "ReminderBot\ReminderBot.csproj", "{0705BDF6-CA59-49D9-B2F1-EDCE9A6823F8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReminderBotTest", "ReminderBotTest\ReminderBotTest.csproj", "{784B1432-D669-47C8-88A5-00EF766A6649}"
 EndProject
@@ -13,10 +13,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{087E508F-8D61-4F7D-9C22-157877A7B6B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{087E508F-8D61-4F7D-9C22-157877A7B6B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{087E508F-8D61-4F7D-9C22-157877A7B6B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{087E508F-8D61-4F7D-9C22-157877A7B6B6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0705BDF6-CA59-49D9-B2F1-EDCE9A6823F8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0705BDF6-CA59-49D9-B2F1-EDCE9A6823F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0705BDF6-CA59-49D9-B2F1-EDCE9A6823F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0705BDF6-CA59-49D9-B2F1-EDCE9A6823F8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{784B1432-D669-47C8-88A5-00EF766A6649}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{784B1432-D669-47C8-88A5-00EF766A6649}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{784B1432-D669-47C8-88A5-00EF766A6649}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -24,5 +24,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CE35889C-6161-433B-A28C-52E888D93ED0}
 	EndGlobalSection
 EndGlobal

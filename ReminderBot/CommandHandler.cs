@@ -1,28 +1,48 @@
 ﻿using Discord.Commands;
 using Discord.WebSocket;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace ReminderBot
 {
-    class ReminderHandler
+    class CommandHandler
     {
-        private readonly DiscordSocketClient _client;        
+        private readonly DiscordSocketClient _client;
 
-        public ReminderHandler(DiscordSocketClient client)
+        public CommandHandler(DiscordSocketClient client)
         {
             _client = client;
         }
 
         public async Task HandleCommand(SocketMessage msg, string prefix)
         {
+            int id = ParseCommand(msg, prefix, out Alarm alarm);
+            if (id <= 0)
+            {
+                await ReportErrorToUser(msg.Channel, id);
+            }
+            else
+            {
+                alarm.alarmId = AddAlarmEntry(alarm);
+
+                PrintAlarm(alarm);
+            }
+            
+        }
+
+        private int ParseCommand(SocketMessage msg, string prefix, out Alarm alarm)
+        {
+            alarm = default(Alarm);
             //Ignore system and bot messages
             var userMsg = msg as SocketUserMessage;
-            if (userMsg == null || userMsg.Author.IsBot) return;       
+            if (userMsg == null || userMsg.Author.IsBot)
+                return 0;
 
             //Creates variable to keep track of where the prefix ends and commands start
             int pos = 0;
@@ -31,56 +51,44 @@ namespace ReminderBot
             if (userMsg.HasStringPrefix(prefix, ref pos))
             {
                 // Create a Command Context.
-                var context = new SocketCommandContext(_client, userMsg);               
+                var context = new SocketCommandContext(_client, userMsg);
 
                 //Split up user message
                 char[] delimiters = { ' ' };
                 var args = context.Message.Content.Split(delimiters);
-
-                //Check if no arguments are provided
-                if (args.Length < 2)
-                {
-                    await context.Channel.SendMessageAsync("Please provide a time for when the alarm should go off.");
-                    return;
-                }
+                
+                if (args.Length < 2) //Only prefix provided
+                    return -1;
 
                 int repeat = ParseRepeat(args[0], prefix);
-                if(repeat < -1)
-                {
-                    await context.Channel.SendMessageAsync(args[0] + " is an invalid command prefix. Was this meant for us?"); //Might be a request to another bot on the channel
-                    return;
-                }
+                if (repeat < -1) //Invalid prefix
+                    return -2;
 
                 int index = ParseWhen(args, out DateTime when, out int interval);
+
                 if (index <= 0)
                 {
-                    if (index == 0)
-                    {
-                        await context.Channel.SendMessageAsync("Alarm cannot be set to a time in the past ("
-                            + when.ToString() + ").");
-                    }
-                    else
-                    {
-                        await context.Channel.SendMessageAsync("Beep. Boop. Invalid time/time format given or time missing.");
-                    }
-                    return;
-                }                
+                    if (index == 0)     //Invalid Time                      
+                        return -3; 
+                    else                //Missing when arguement
+                        return -4;
+                }
 
                 string alarmMessage = ParseAlarmMessage(context.Message.Content, args, index, delimiters);
 
-                Alarm alarm = new AlarmBuilder()
+                alarm = new AlarmBuilder()
                     .ChannelId(context.Message.Channel.Id)
                     .Interval(interval)
                     .Message(alarmMessage)
                     .Repeat(repeat)
                     .UserId(context.Message.Author.Id)
                     .When(when)
-                    .Build();
-                
-                //TODO
-                //Notify user
-                //Start Alarm                
+                    .Build();                                
+
+                return 1;              
             }
+
+            return 0;
         }
 
         /** <summary>Determines how many times the alarm should go off</summary> 
@@ -95,12 +103,12 @@ namespace ReminderBot
         private int ParseRepeat(string command, string prefix)
         {
             int repeat = 0;
-            
+
             if (Regex.IsMatch(command, @"^" + prefix + @"[0-9]\d*$")) //repeat x times
             {
                 if (!int.TryParse(command.Remove(0, prefix.Length), out repeat))
                 {
-;                   repeat = -2;
+                    repeat = -2;
                 }
             }
             else if (command.Equals(prefix + 'r')) //repeat forever
@@ -110,7 +118,7 @@ namespace ReminderBot
             else if (!prefix.Equals(command))
             {
                 repeat = -2;
-            }           
+            }
 
             return repeat;
         }
@@ -134,28 +142,28 @@ namespace ReminderBot
 
             //Checks to see if time was given as a datetime and tries to parse it.            
             string temp = "";
-            for(int i = 1; i<args.Length; i++)
+            for (int i = 1; i < args.Length; i++)
             {
                 temp += " " + args[i];
                 if (DateTime.TryParse(temp, out var output))
-                {                        
+                {
                     when = output;
                     whenEndpoint = i;
-                }                      
+                }
             }
-            
+
             //If time wasn't given in a datetime format, we check to see if it was given in minutes
             if (whenEndpoint == -1)
-            {                
+            {
                 if (int.TryParse(args[1], out interval))
                 {
                     when = DateTime.Now.AddMinutes(interval);
                     whenEndpoint = 1;
-                }                
+                }
             }
 
             //If time is in the past or is right now. Also determines if time wasn't given
-            if (when.CompareTo(DateTime.Now) <= 0) 
+            if (when.CompareTo(DateTime.Now) <= 0)
             {
                 whenEndpoint = 0;
             }
@@ -173,7 +181,7 @@ namespace ReminderBot
          */
         private string ParseAlarmMessage(string message, string[] splitMessage, int whenEndpoint, char[] delimiters)
         {
-            string alarmMessage = "";            
+            string alarmMessage = "";
             whenEndpoint++; //If there is an alarm message, it appears after the whenEndpoint
             if (whenEndpoint < splitMessage.Length)
             {
@@ -192,32 +200,70 @@ namespace ReminderBot
             return alarmMessage;
         }
 
-        private void AddAlarmEntry(Alarm a)
-        {   
-            //TODO
-            //IF DB EXISTS
-                //RETURN ADD TO DB
-            //ELSE
-                //RETURN ADD TO JSON
-        }
-        
-        private bool AddAlarmEntryToJson() //Possibly return int to help with identifying errors instead of just success or failure
+        private int AddAlarmEntry(Alarm a)
         {
             //TODO
-            //Get list of alarms
-            //Get get empty alarm id
-            //Set alarm id for alarm
-            //Add alarm to list
-            //Serialize list
-
-            return true;            
+            //IF DB EXISTS
+            //RETURN ADD TO DB
+            //ELSE
+            return AddAlarmEntryToJson(a);
         }
 
-        private bool AddAlarmEntryToDB()
+        private int AddAlarmEntryToJson(Alarm a)
+        {
+            //TODO
+            //get lock
+
+            //Read json file
+            string fileLocation = Path.Combine(Environment.CurrentDirectory, "alarms.json");
+            Dictionary<int, Alarm> alarms = new Dictionary<int, Alarm>();
+            if (File.Exists(fileLocation))
+            { 
+                StreamReader s = new StreamReader(fileLocation);            
+                string json = s.ReadToEnd();
+                alarms = JsonConvert.DeserializeObject<Dictionary<int, Alarm>>(json);
+                s.Close();
+            }
+
+            //Find open id and add it to the list
+            int id = Enumerable.Range(0, int.MaxValue)
+                    .Except(alarms.Keys)
+                    .FirstOrDefault();
+            alarms.Add(id, a);
+                        
+            //Update json file
+            File.WriteAllText(fileLocation, 
+                JsonConvert.SerializeObject(alarms, Formatting.Indented));
+
+            return id;
+        }
+
+        private bool AddAlarmEntryToDB(Alarm a)
         {
             //TODO
             return true;
-        }        
+        }
+
+        private async Task ReportErrorToUser(ISocketMessageChannel channel, int error)
+        {
+            //0 is ignored since that means the message wasn't meant for this bot
+            if (error == -1)
+            {
+                await channel.SendMessageAsync("Please provide a time for when the alarm should go off.");
+            }
+            else if (error == -2)
+            {
+                await channel.SendMessageAsync("Invalid command prefix. Was this meant for us?"); //Might be a request to another bot on the channel
+            }
+            else if(error == -3)
+            {
+                await channel.SendMessageAsync("Alarm cannot be set to a time in the past or the current time.");
+            }
+            else if(error == -4)
+            {
+                await channel.SendMessageAsync("Beep. Boop. Invalid time/time format given or time missing.");
+            }
+        }
 
         //Temporary function for manual testing (Class structures subject to change). Will be removed once I implement unit tests
         public async void PrintAlarm(Alarm a)
@@ -225,14 +271,15 @@ namespace ReminderBot
             var chn = _client.GetChannel(a.channelId) as ISocketMessageChannel;
             string rpt;
             rpt = a.repeat == -1 ? "Forever" : a.repeat.ToString() + " times";
-            
+
             await chn.SendMessageAsync("Hello, " + _client.GetUser(a.userId).Username + " sent me here with the following alarm: ```" +
                 "Id: " + a.alarmId + "\n" +
                 "When: " + a.when + "\n" +
                 "Message: " + a.message + "\n" +
                 "Repeats: " + rpt + " every " + a.interval + " minutes\n" +
-                "Alarm Started: " + a.started + "\n" +                
+                "Alarm Started: " + a.started + "\n" +
                 "```");
         }
     }
 }
+
