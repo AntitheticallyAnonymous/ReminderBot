@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using Newtonsoft.Json.Linq;
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ReminderBot
@@ -12,6 +13,8 @@ namespace ReminderBot
     {
         private readonly DiscordSocketClient _client;
         private CommandHandler _reminders;
+        private AlarmHandler _alarm;
+        private Thread _alarmThread;
 
         //Values from json file
         private string _token;
@@ -42,14 +45,16 @@ namespace ReminderBot
             _client.Log += new Logger().Log;
 
             //Add command handler(s)
-            _reminders = new CommandHandler(_client);
+            _reminders = new CommandHandler(_client);            
             _client.MessageReceived += HandleCommandAsync;
 
+            
             await InitializeVariablesFromJson();
             await ConnectToDiscord();
 
-            //TODO 
-            //Start Alarms from previous instance
+            _alarm = new AlarmHandler(_client);
+            _alarmThread = new Thread(new ThreadStart(_alarm.MainCycle));
+            _alarmThread.Start();
 
             //Blocks until program is closed
             await Task.Delay(-1);
@@ -57,7 +62,12 @@ namespace ReminderBot
 
         private async Task HandleCommandAsync(SocketMessage message)
         {            
-            await _reminders.HandleCommand(message, _prefix);
+            Alarm a = await _reminders.HandleCommand(message, _prefix);
+            if(a != null)
+            {
+                _alarm.AddAlarm(a);
+            }
+
         }
 
         /*

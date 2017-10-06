@@ -20,9 +20,16 @@ namespace ReminderBot
             _client = client;
         }
 
-        public async Task HandleCommand(SocketMessage msg, string prefix)
+        public async Task<Alarm> HandleCommand(SocketMessage msg, string prefix)
         {
+            //Ignores empty and bot messages
+            if (msg == null || msg.Author.IsBot)
+            {
+                return null;
+            }
+
             int id = ParseCommand(msg, prefix, out Alarm alarm);
+
             if (id <= 0)
             {
                 await ReportErrorToUser(msg.Channel, id);
@@ -30,32 +37,22 @@ namespace ReminderBot
             else
             {
                 alarm.alarmId = AddAlarmEntry(alarm);
-
-                PrintAlarm(alarm);
+                PrintAlarm(alarm);                
             }
-            
+
+            return alarm;
         }
 
         private int ParseCommand(SocketMessage msg, string prefix, out Alarm alarm)
         {
-            alarm = default(Alarm);
-            //Ignore system and bot messages
-            var userMsg = msg as SocketUserMessage;
-            if (userMsg == null || userMsg.Author.IsBot)
-                return 0;
-
-            //Creates variable to keep track of where the prefix ends and commands start
-            int pos = 0;
+            alarm = default(Alarm);            
 
             //Checks if the message is meant for the bot
-            if (userMsg.HasStringPrefix(prefix, ref pos))
+            if (msg.Content.StartsWith(prefix))
             {
-                // Create a Command Context.
-                var context = new SocketCommandContext(_client, userMsg);
-
                 //Split up user message
                 char[] delimiters = { ' ' };
-                var args = context.Message.Content.Split(delimiters);
+                var args = msg.Content.Split(delimiters);
                 
                 if (args.Length < 2) //Only prefix provided
                     return -1;
@@ -74,14 +71,14 @@ namespace ReminderBot
                         return -4;
                 }
 
-                string alarmMessage = ParseAlarmMessage(context.Message.Content, args, index, delimiters);
+                string alarmMessage = ParseAlarmMessage(msg.Content, args, index, delimiters);
 
                 alarm = new AlarmBuilder()
-                    .ChannelId(context.Message.Channel.Id)
+                    .ChannelId(msg.Channel.Id)
                     .Interval(interval)
                     .Message(alarmMessage)
                     .Repeat(repeat)
-                    .UserId(context.Message.Author.Id)
+                    .UserId(msg.MentionedUsers.Count > 0 ? 0 : msg.Author.Id)
                     .When(when)
                     .Build();                                
 
@@ -216,7 +213,7 @@ namespace ReminderBot
 
             //Read json file
             string fileLocation = Path.Combine(Environment.CurrentDirectory, "alarms.json");
-            Dictionary<int, Alarm> alarms = new Dictionary<int, Alarm>();
+            Dictionary<int, Alarm> alarms;
             if (File.Exists(fileLocation))
             { 
                 StreamReader s = new StreamReader(fileLocation);            
@@ -224,18 +221,22 @@ namespace ReminderBot
                 alarms = JsonConvert.DeserializeObject<Dictionary<int, Alarm>>(json);
                 s.Close();
             }
+            else
+            {
+                alarms = new Dictionary<int, Alarm>();
+            }
 
             //Find open id and add it to the list
-            int id = Enumerable.Range(0, int.MaxValue)
+            a.alarmId = Enumerable.Range(0, int.MaxValue)
                     .Except(alarms.Keys)
                     .FirstOrDefault();
-            alarms.Add(id, a);
+            alarms.Add(a.alarmId, a);
                         
             //Update json file
             File.WriteAllText(fileLocation, 
                 JsonConvert.SerializeObject(alarms, Formatting.Indented));
 
-            return id;
+            return a.alarmId;
         }
 
         private bool AddAlarmEntryToDB(Alarm a)
