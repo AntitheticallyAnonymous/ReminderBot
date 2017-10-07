@@ -53,14 +53,14 @@ namespace ReminderBot
                 bool signaled;                
                 if (alarms.Count == 0)
                 {                    
-                    signaled = ewh.WaitOne(-1);                    
+                    signaled = ewh.WaitOne(-1); //No alarms, so we wait until we get one                   
                 }
                 else
                 {                    
                     TimeSpan difference = alarms.First().Key - DateTime.UtcNow;                    
                     if (difference > TimeSpan.Zero)
                     {                        
-                        signaled = ewh.WaitOne(difference);                        
+                        signaled = ewh.WaitOne(difference);   //Wait until it's time to signal the alarm                                  
                     }
                     else
                     {
@@ -96,21 +96,23 @@ namespace ReminderBot
                 return;
             }
 
-            Alarm a = alarms.First().Value;
-            alarms.RemoveAt(0);
+            lock (alarmLock)
+            { 
+                Alarm a = alarms.First().Value;
+                alarms.RemoveAt(0);
 
-            if (a.repeat > 0 || a.repeat == -1)
-            {
-                a.when = a.when.AddMinutes(a.interval);
-                if(a.repeat > 0)
+                if (a.repeat > 0 || a.repeat == -1)
                 {
-                    a.repeat--;
-                }
+                    a.when = a.when.AddMinutes(a.interval);
+                    if(a.repeat > 0)
+                    {
+                        a.repeat--;
+                    }
 
-                AddAlarm(a);
+                    AddAlarm(a);
+                }
             }
 
-            
             //update json || database
         }
 

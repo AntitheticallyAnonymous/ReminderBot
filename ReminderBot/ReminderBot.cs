@@ -48,15 +48,13 @@ namespace ReminderBot
             _reminders = new CommandHandler(_client);                 
             _client.MessageReceived += HandleCommandAsync;
             _client.Ready += StartAlarmHandler;
-
             
             await InitializeVariablesFromJson();
             await ConnectToDiscord();
-
-            
-
+           
             _alarm = new AlarmHandler(_client);            
             _alarmThread = new Thread(new ThreadStart(_alarm.MainCycle));            
+            
             //Blocks until program is closed
             await Task.Delay(-1);
         }
