@@ -19,10 +19,9 @@ namespace ReminderBot
         public AlarmHandler(DiscordSocketClient c)
         {
             _client = c;
-            alarms = new SortedList<DateTime, Alarm>();
-            AddAlarmsFromJson();
-            ewh = new EventWaitHandle(false, EventResetMode.ManualReset);
-            Console.WriteLine("Let's begin");
+            alarms = new SortedList<DateTime, Alarm>();            
+            AddAlarmsFromJson();            
+            ewh = new EventWaitHandle(false, EventResetMode.ManualReset);            
         }
 
         //TODO alarmhandler contructor for database
@@ -37,10 +36,12 @@ namespace ReminderBot
                 string json = s.ReadToEnd();
                 jsonAlarms = JsonConvert.DeserializeObject<Dictionary<int, Alarm>>(json);
                 s.Close();
-
-                foreach(KeyValuePair<int, Alarm> k in jsonAlarms)
+                if (jsonAlarms != null)
                 {
-                    AddAlarm(k.Value);
+                    foreach (KeyValuePair<int, Alarm> k in jsonAlarms)
+                    {
+                        AddAlarm(k.Value);
+                    }
                 }
             }
         }
@@ -49,38 +50,42 @@ namespace ReminderBot
         {                        
             while (true)
             {
-                bool signaled;
-                bool oldAlarm = false;
-                
-                if (alarms.Count != 0)
-                {
+                bool signaled;                
+                if (alarms.Count == 0)
+                {                    
                     signaled = ewh.WaitOne(-1);                    
                 }
                 else
-                {
-                    TimeSpan difference = alarms.First().Key - DateTime.UtcNow;
+                {                    
+                    TimeSpan difference = alarms.First().Key - DateTime.UtcNow;                    
                     if (difference > TimeSpan.Zero)
-                    {
+                    {                        
                         signaled = ewh.WaitOne(difference);                        
                     }
                     else
                     {
-                        signaled = false;
-                        if (difference.Hours > 1) //Program may not have been running when it was supposed to go off
+                        //TODO?: ADD LEEWAY TO CONFIG INSTEAD OF HARDCODING
+                        if (difference.TotalMinutes >= -1) //Allow some leeway 'cause calucations aren't instantenous
+                        {                                                     
+                            signaled = false;                            
+                        }
+                        else
                         {
-                            oldAlarm = true;
+                            //Alarm is way past threshold, so we ignore it and remove it//update it
+                            UpdateAlarms();
+                            signaled = true;
                         }                        
                     }
                 }
 
                 if (!signaled)
                 {
-                    if (!oldAlarm)
-                    {                        
+                    if (_client.ConnectionState == Discord.ConnectionState.Connected)
+                    {
                         SendAlarm();
-                    }                    
-                    UpdateAlarms();
-                }                
+                        UpdateAlarms();
+                    }
+                }
             }
         }
 
@@ -111,29 +116,45 @@ namespace ReminderBot
 
         private async void SendAlarm()
         {
+            if(alarms.Count == 0)
+            {
+                return;
+            }
+
             Alarm a = alarms.First().Value;
 
-            ISocketMessageChannel chn = _client.GetChannel(a.channelId) as ISocketMessageChannel;                        
+            ISocketMessageChannel chn = _client.GetChannel(a.channelId) as ISocketMessageChannel;   
+            if(chn == null)
+            {
+                return;
+            }
 
             string msg = a.message;
+            if(msg == null)
+            {
+                msg = "";
+            }
+
             if(a.userId != 0)
             {
-                msg = _client.GetUser(a.userId).Mention + msg;
+                SocketUser user = _client.GetUser(a.userId);
+                if(user != null)
+                {
+                    msg = user.Mention + " " + msg;
+                }          
             }
 
             await chn.SendMessageAsync(msg);
         }
 
         public void AddAlarm(Alarm a)
-        {
-            Console.WriteLine("added alarm #" + a.alarmId);
+        {            
             lock (alarmLock)
             {
                 alarms.Add(a.when, a);
 
                 if (ewh != default(EventWaitHandle))
-                {
-                    Console.WriteLine("???");
+                {                    
                     ewh.Set();
                 }
             }

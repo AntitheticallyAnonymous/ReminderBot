@@ -40,24 +40,31 @@ namespace ReminderBot
          * Keeps running until the program closes
          */
         public async Task MainAsync()
-        {
+        {            
             //Add logging handler
             _client.Log += new Logger().Log;
 
             //Add command handler(s)
-            _reminders = new CommandHandler(_client);            
+            _reminders = new CommandHandler(_client);                 
             _client.MessageReceived += HandleCommandAsync;
+            _client.Ready += StartAlarmHandler;
 
             
             await InitializeVariablesFromJson();
             await ConnectToDiscord();
 
-            _alarm = new AlarmHandler(_client);
-            _alarmThread = new Thread(new ThreadStart(_alarm.MainCycle));
-            _alarmThread.Start();
+            
 
+            _alarm = new AlarmHandler(_client);            
+            _alarmThread = new Thread(new ThreadStart(_alarm.MainCycle));            
             //Blocks until program is closed
             await Task.Delay(-1);
+        }
+
+        private Task StartAlarmHandler()
+        {            
+            _alarmThread.Start();
+            return Task.CompletedTask;
         }
 
         private async Task HandleCommandAsync(SocketMessage message)
