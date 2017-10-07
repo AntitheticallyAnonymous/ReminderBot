@@ -10,8 +10,8 @@ namespace ReminderBot
         public ulong userId { get; set; }
         public ulong channelId { get; set; }
         public int interval { get; set; }
-        public int repeat { get; set; }
-        public bool started { get; set; }
+        public int repeat { get; set; }    
+        public bool hasMention { get; set; }
 
         public Alarm() { } //For serializing and deserializing; Probably not safe
         public Alarm(AlarmBuilder a)
@@ -32,7 +32,7 @@ namespace ReminderBot
             channelId = a.channelId;
             interval = a.interval;
             repeat = a.repeat;
-            started = false;
+            hasMention = a.hasMention;
         }
     }
 }

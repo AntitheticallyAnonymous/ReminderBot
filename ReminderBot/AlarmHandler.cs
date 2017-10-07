@@ -139,9 +139,9 @@ namespace ReminderBot
             if(msg == null)
             {
                 msg = "";
-            }
+            }            
 
-            if(a.userId != 0)
+            if(a.userId != 0 && !a.hasMention)
             {
                 SocketUser user = _client.GetUser(a.userId);
                 if(user != null)

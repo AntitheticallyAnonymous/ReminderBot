@@ -10,7 +10,8 @@ namespace ReminderBot
         public ulong userId { get; set; }
         public ulong channelId { get; set; }
         public int interval { get; set; }
-        public int repeat { get; set; }        
+        public int repeat { get; set; }
+        public bool hasMention { get; set; }
 
         public AlarmBuilder() { } //In case more constructors are added
 
@@ -64,6 +65,12 @@ namespace ReminderBot
         public Alarm Build()
         {
             return new Alarm(this);
+        }
+
+        public AlarmBuilder HasMention(bool m)
+        {
+            this.hasMention = m;
+            return this;
         }
     }
 }
