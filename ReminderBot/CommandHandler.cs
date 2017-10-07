@@ -29,13 +29,13 @@ namespace ReminderBot
             }
 
             int id = ParseCommand(msg, prefix, out Alarm alarm);
-
+            
             if (id <= 0)
             {
                 await ReportErrorToUser(msg.Channel, id);
             }
             else
-            {
+            {                
                 alarm.alarmId = AddAlarmEntry(alarm);
                 PrintAlarm(alarm);                
             }
@@ -80,8 +80,8 @@ namespace ReminderBot
                     .Repeat(repeat)
                     .UserId(msg.MentionedUsers.Count > 0 ? 0 : msg.Author.Id)
                     .When(when)
-                    .Build();                                
-
+                    .Build();
+                
                 return 1;              
             }
 
@@ -154,7 +154,7 @@ namespace ReminderBot
             {
                 if (int.TryParse(args[1], out interval))
                 {
-                    when = DateTime.Now.AddMinutes(interval);
+                    when = DateTime.UtcNow.AddMinutes(interval);
                     whenEndpoint = 1;
                 }
             }
@@ -213,7 +213,7 @@ namespace ReminderBot
 
             //Read json file
             string fileLocation = Path.Combine(Environment.CurrentDirectory, "alarms.json");
-            Dictionary<int, Alarm> alarms;
+            Dictionary<int, Alarm> alarms = null;
             if (File.Exists(fileLocation))
             { 
                 StreamReader s = new StreamReader(fileLocation);            
@@ -221,7 +221,7 @@ namespace ReminderBot
                 alarms = JsonConvert.DeserializeObject<Dictionary<int, Alarm>>(json);
                 s.Close();
             }
-            else
+            if(alarms == null)
             {
                 alarms = new Dictionary<int, Alarm>();
             }
