@@ -56,8 +56,12 @@ namespace ReminderBot
                     signaled = ewh.WaitOne(-1); //No alarms, so we wait until we get one                   
                 }
                 else
-                {                    
-                    TimeSpan difference = alarms.First().Key - DateTime.UtcNow;                    
+                {
+                    TimeSpan difference;
+                    lock (alarmLock)
+                    { 
+                         difference = alarms.First().Key - DateTime.UtcNow;
+                    }                    
                     if (difference > TimeSpan.Zero)
                     {                        
                         signaled = ewh.WaitOne(difference);   //Wait until it's time to signal the alarm                                  
@@ -159,7 +163,7 @@ namespace ReminderBot
                 {                    
                     ewh.Set();
                 }
-            }
+            }            
         }        
     }
 }

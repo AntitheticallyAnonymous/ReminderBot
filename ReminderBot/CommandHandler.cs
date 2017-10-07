@@ -37,7 +37,7 @@ namespace ReminderBot
             else
             {                
                 alarm.alarmId = AddAlarmEntry(alarm);
-                PrintAlarm(alarm);                
+                NotifyUser(_client.GetChannel(alarm.channelId) as ISocketMessageChannel);                
             }
 
             return alarm;
@@ -267,19 +267,9 @@ namespace ReminderBot
         }
 
         //Temporary function for manual testing (Class structures subject to change). Will be removed once I implement unit tests
-        public async void PrintAlarm(Alarm a)
-        {
-            var chn = _client.GetChannel(a.channelId) as ISocketMessageChannel;
-            string rpt;
-            rpt = a.repeat == -1 ? "Forever" : a.repeat.ToString() + " times";
-
-            await chn.SendMessageAsync("Hello, " + _client.GetUser(a.userId).Username + " sent me here with the following alarm: ```" +
-                "Id: " + a.alarmId + "\n" +
-                "When: " + a.when + "\n" +
-                "Message: " + a.message + "\n" +
-                "Repeats: " + rpt + " every " + a.interval + " minutes\n" +
-                "Alarm Started: " + a.started + "\n" +
-                "```");
+        public async void NotifyUser(ISocketMessageChannel chn)
+        {            
+            await chn.SendMessageAsync("Your alarm has been added.");
         }
     }
 }

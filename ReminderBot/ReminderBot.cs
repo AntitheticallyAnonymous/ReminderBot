@@ -49,7 +49,7 @@ namespace ReminderBot
             _client.MessageReceived += HandleCommandAsync;
             _client.Ready += StartAlarmHandler;
             
-            await InitializeVariablesFromJson();
+            InitializeVariablesFromJson();
             await ConnectToDiscord();
            
             _alarm = new AlarmHandler(_client);            
@@ -73,12 +73,13 @@ namespace ReminderBot
                 _alarm.AddAlarm(a);
             }
 
+            return;
         }
 
         /*
          * Parses variables from json file
          */
-        private Task InitializeVariablesFromJson()
+        private void InitializeVariablesFromJson()
         {
             //If the credentials file doesn't exist, create it
             if (!File.Exists(Path.Combine(Environment.CurrentDirectory, "credentials.json")))
@@ -110,7 +111,7 @@ namespace ReminderBot
              * ClientID; TODO: Investigate uses for ClientID
              */
 
-            return Task.CompletedTask;
+            return;
         }
 
         /* 
