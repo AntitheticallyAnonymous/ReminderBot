@@ -78,7 +78,8 @@ namespace ReminderBot
                     .Interval(interval)
                     .Message(alarmMessage)
                     .Repeat(repeat)
-                    .UserId(msg.MentionedUsers.Count > 0 ? 0 : msg.Author.Id)
+                    .UserId(msg.Author.Id)
+                    .HasMention(msg.MentionedUsers.Count > 0 || msg.MentionedRoles.Count > 0)
                     .When(when)
                     .Build();
                 
@@ -126,7 +127,7 @@ namespace ReminderBot
          * <param name="interval">How frequently the alarm is to repeat in minutes (assuming it repeats)</param>
          * <returns> 
          * <para> Positive value: Position in <c>args</c> for last valid DateTime</para>
-         * <para> 0: Time for alarm is in the past</para>
+         * <para> 0: Time for alarm is in the past or right now</para>
          * <para> -1: Invalid format for time</para>
          *  </returns>
          */
@@ -155,7 +156,14 @@ namespace ReminderBot
                 if (int.TryParse(args[1], out interval))
                 {
                     when = DateTime.UtcNow.AddMinutes(interval);
-                    whenEndpoint = 1;
+                    if (interval == 0)
+                    {
+                        whenEndpoint = 0;
+                    }
+                    else
+                    {
+                        whenEndpoint = 1;
+                    }                        
                 }
             }
 

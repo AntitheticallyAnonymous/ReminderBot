@@ -105,8 +105,8 @@ namespace ReminderBot
             _prefix = credentials["Prefix"].ToString();
 
             /* TODO: Implement the following credentials
-             * Owner; Can be null
-             * Database; Can be null (Saves to file)
+             * Owner; Can be null; Allows for bot config (Extra feature)
+             * Database; Can be null (Saves to file) (Semi-core feature)
              * BotID; TODO: Investigate uses for BotID
              * ClientID; TODO: Investigate uses for ClientID
              */
