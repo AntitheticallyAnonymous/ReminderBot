@@ -282,8 +282,7 @@ namespace ReminderBot
          */
         private int AddAlarmEntryToDB(Alarm a)
         {
-            //TODO
-            return true;
+            throw new NotImplementedException("AddAlarmEntryToDB");
         }
 
         /** <summary>Sends message back to the sender indicating the error that occurred when parsing</summary>
