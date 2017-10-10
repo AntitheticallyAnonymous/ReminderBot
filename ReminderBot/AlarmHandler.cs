@@ -33,6 +33,7 @@ namespace ReminderBot
             throw new NotImplementedException("Alarm Handler (Db constructor)");
         }
 
+        /**<summary>Gets prexisting alarms from the default json file and saves them.</summary>*/
         private void AddAlarmsFromJson()
         {
             lock (_jsonLock)
@@ -55,7 +56,9 @@ namespace ReminderBot
             }
             
         }
-
+        
+        /** <summary>Cycle that indefinitely runs. Updates alarms when signaled.
+         * Sends messages when timers goes off</summary>*/
         public void MainCycle()
         {                        
             while (true)
@@ -103,6 +106,7 @@ namespace ReminderBot
             }
         }
 
+        /** <summary>Removes earliest alarm if not meant to repeat. Otherwise updates when it is to go off</summary>*/
         private void UpdateAlarms()
         {
             if (_alarmIds.Count <= 0)
@@ -122,7 +126,7 @@ namespace ReminderBot
 
                 Alarm a = _alarms[id];                
 
-                //If the alarm is to repeat, add the interval of when it's to repeat
+                //If the alarm is to repeat, add the interval of when it's to repeat and adds/updates the entries
                 if (a.repeat > 0 || a.repeat == -1)
                 {
                     a.when = a.when.AddMinutes(a.interval);
@@ -138,7 +142,11 @@ namespace ReminderBot
                     _alarms.Remove(id);
                 }                
             }
+        }
 
+        /** <summary>Updates the json file with the alarm entries</summary>*/
+        private void UpdateJson()
+        {
             lock (_jsonLock)
             {
                 string fileLocation = Path.Combine(Environment.CurrentDirectory, "alarms.json");
@@ -148,6 +156,13 @@ namespace ReminderBot
             }
         }
 
+        /** <summary>Updates the database with the alarm entries</summary>*/
+        private void UpdateDatabase()
+        {
+            throw new NotImplementedException("Database Alarm Update");
+        }
+
+        /** <summary>Sends/triggers the earliest alarm</summary>*/
         private async void SendAlarm()
         {
             if(_alarmIds.Count == 0)
@@ -162,12 +177,18 @@ namespace ReminderBot
             }
 
             Alarm a = _alarms[id];
+            
+            if (a.when > DateTime.UtcNow)
+            {
+                return;
+            }
+
             ISocketMessageChannel chn = _client.GetChannel(a.channelId) as ISocketMessageChannel;   
             if(chn == null)
             {
                 return;
             }
-
+            
             string msg = a.message;
             if(msg == null)
             {
@@ -186,6 +207,9 @@ namespace ReminderBot
             await chn.SendMessageAsync(msg);
         }
 
+        /** <summary>Adds alarm to to the dictionary and sorted list</summary>
+         * <param name="a">Alarm to be added</param>
+         */
         public void AddAlarm(Alarm a)
         {            
             lock (_alarmLock)
@@ -201,6 +225,7 @@ namespace ReminderBot
                                 
                 _alarmIds.Add(a.when, a.alarmId);
 
+                //Tell the thread that there's a new alarm
                 if (_ewh != default(EventWaitHandle))
                 {                    
                     _ewh.Set();

@@ -52,7 +52,7 @@ namespace ReminderBot
             //Add command handler(s)
             _reminders = new CommandHandler(_client, _jsonLock);                 
             _client.MessageReceived += HandleCommandAsync;
-            _client.Ready += StartAlarmHandler;            
+            _client.Ready += OnReady;            
                                  
             await ConnectToDiscord();
            
@@ -63,21 +63,46 @@ namespace ReminderBot
             await Task.Delay(-1);
         }
 
+        /**<summary>Code that executes when the bot's status is 'Ready'</summary>*/
+        private Task OnReady()
+        {
+            StartAlarmHandler();
+            return Task.CompletedTask;
+        }
+
+        /**<summary>Starts the thread for handling alarms</summary>*/
         private Task StartAlarmHandler()
-        {            
+        {
             _alarmThread.Start();
             return Task.CompletedTask;
         }
 
+        /**<summary>Processes the message sent in by discord</summary>
+         * <param name="message">The message sent in by discord</param>
+         */
         private async Task HandleCommandAsync(SocketMessage message)
-        {            
+        {
+            await HandleAlarmCommand(message);
+            return;
+        }
+
+        /**<summary>Processes the message to see if it's an alarm request. Adds the alarm if it is and starts the timer</summary>
+         * <param name="message">The message sent in by discord</param>
+         * <returns>
+         * <para>True: Message was a valid alarm request and was successfully added and started.</para>
+         * <para>False: Message was not a valid alarm request.</para>
+         * </returns>
+         */
+        private async Task<bool> HandleAlarmCommand(SocketMessage message)
+        {
             Alarm a = await _reminders.HandleCommand(message, _prefix);
-            if(a != null)
+            if (a != null)
             {
                 _alarm.AddAlarm(a);
+                return true;
             }
 
-            return;
+            return false;
         }
 
         /**<summary> Parses values from json file and puts them into the variables</summary>*/
