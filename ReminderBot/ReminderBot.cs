@@ -110,7 +110,6 @@ namespace ReminderBot
              * BotID; TODO: Investigate uses for BotID
              * ClientID; TODO: Investigate uses for ClientID
              */
-
             return;
         }
 
