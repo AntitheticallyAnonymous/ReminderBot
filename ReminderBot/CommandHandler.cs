@@ -37,7 +37,7 @@ namespace ReminderBot
 
             int id = ParseCommand(msg, prefix, out Alarm alarm);
             
-            if (id > 0)
+            if (id <= 0)
             {
                 await ReportErrorToUser(msg.Channel, id);
             }
