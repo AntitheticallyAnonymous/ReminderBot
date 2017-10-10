@@ -20,6 +20,7 @@ namespace ReminderBot
         //Values from json file
         private string _token;
         private string _prefix;
+        private string _db;
 
         public ReminderBot()
         {
@@ -79,9 +80,7 @@ namespace ReminderBot
             return;
         }
 
-        /*
-         * Parses variables from json file
-         */
+        /**<summary> Parses values from json file and puts them into the variables</summary>*/
         private void InitializeVariablesFromJson()
         {
             //If the credentials file doesn't exist, create it
@@ -116,9 +115,7 @@ namespace ReminderBot
             return;
         }
 
-        /* 
-         * Creates the default credentials.json file where information is stored
-         */
+        /** <summary> Creates the default credentials.json file where information is stored </summary> */
         private void CreateDefaultCredentialsFile()
         {
             JObject credentials = new JObject(
@@ -132,12 +129,13 @@ namespace ReminderBot
             File.WriteAllText(@"credentials.json", credentials.ToString());
         }
 
+        /** <summary> Creates the default credentials.json file where information is stored </summary> */
         private async Task ConnectToDiscord()
         {
             if (_token == null)
             {
                 throw new System.ArgumentNullException("Bot's token is null. Either the value hasn't been set in " +
-                    "credentials.json or the value hasn't been parsed yet.");
+                    "credentials.json");
             }
 
             await _client.LoginAsync(TokenType.Bot, _token);

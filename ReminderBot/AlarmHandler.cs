@@ -28,7 +28,10 @@ namespace ReminderBot
             _ewh = new EventWaitHandle(false, EventResetMode.ManualReset);            
         }
 
-        //TODO alarmhandler contructor for database
+        public AlarmHandler(DiscordSocketClient c, string db)
+        {
+            throw new NotImplementedException("Alarm Handler (Db constructor)");
+        }
 
         private void AddAlarmsFromJson()
         {
@@ -111,14 +114,15 @@ namespace ReminderBot
             { 
                 int id = _alarmIds.First().Value;
                 _alarmIds.RemoveAt(0);
+
                 if (!_alarms.ContainsKey(id))
                 {
-                    throw new ArgumentException("Alarm dictonary and id list has gotten out of sync. Report this to the developer.");
+                    throw new ArgumentException("Alarm dictonary and id list has gotten out of sync somehow. Report this to the developer.");
                 }
 
-                Alarm a = _alarms[id];
-                _alarms.Remove(id);                    
+                Alarm a = _alarms[id];                
 
+                //If the alarm is to repeat, add the interval of when it's to repeat
                 if (a.repeat > 0 || a.repeat == -1)
                 {
                     a.when = a.when.AddMinutes(a.interval);
@@ -129,7 +133,10 @@ namespace ReminderBot
 
                     AddAlarm(a);
                 }
-                
+                else
+                {
+                    _alarms.Remove(id);
+                }                
             }
 
             lock (_jsonLock)
@@ -183,7 +190,15 @@ namespace ReminderBot
         {            
             lock (_alarmLock)
             {
-                _alarms.Add(a.alarmId, a);
+                if (_alarms.ContainsKey(a.alarmId))
+                {
+                    _alarms[a.alarmId] = a;
+                }
+                else
+                {
+                    _alarms.Add(a.alarmId, a);
+                }
+                                
                 _alarmIds.Add(a.when, a.alarmId);
 
                 if (_ewh != default(EventWaitHandle))
