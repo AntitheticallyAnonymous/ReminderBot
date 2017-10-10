@@ -12,38 +12,45 @@ namespace ReminderBot
     class AlarmHandler
     {
         private readonly DiscordSocketClient _client;
-        private static SortedList<DateTime, Alarm> alarms;
-        private EventWaitHandle ewh;
-        private Object alarmLock = new Object();
+        private static SortedList<DateTime, int> _alarmIds;
+        private static Dictionary<int, Alarm> _alarms;
+        private EventWaitHandle _ewh;
+        private readonly Object _alarmLock = new Object();
+        private readonly Object _jsonLock;
 
-        public AlarmHandler(DiscordSocketClient c)
+        public AlarmHandler(DiscordSocketClient c, Object jsonLock)
         {
             _client = c;
-            alarms = new SortedList<DateTime, Alarm>();            
+            _alarmIds = new SortedList<DateTime, int>();
+            _alarms = new Dictionary<int, Alarm>();
+            _jsonLock = jsonLock;
             AddAlarmsFromJson();            
-            ewh = new EventWaitHandle(false, EventResetMode.ManualReset);            
+            _ewh = new EventWaitHandle(false, EventResetMode.ManualReset);            
         }
 
         //TODO alarmhandler contructor for database
 
         private void AddAlarmsFromJson()
         {
-            string fileLocation = Path.Combine(Environment.CurrentDirectory, "alarms.json");
-            Dictionary<int, Alarm> jsonAlarms;
-            if (File.Exists(fileLocation))
+            lock (_jsonLock)
             {
-                StreamReader s = new StreamReader(fileLocation);
-                string json = s.ReadToEnd();
-                jsonAlarms = JsonConvert.DeserializeObject<Dictionary<int, Alarm>>(json);
-                s.Close();
-                if (jsonAlarms != null)
+                string fileLocation = Path.Combine(Environment.CurrentDirectory, "alarms.json");               
+                if (File.Exists(fileLocation))
                 {
-                    foreach (KeyValuePair<int, Alarm> k in jsonAlarms)
+                    StreamReader s = new StreamReader(fileLocation);
+                    string json = s.ReadToEnd();
+                    Dictionary<int, Alarm> jsonAlarms = JsonConvert.DeserializeObject<Dictionary<int, Alarm>>(json);
+                    s.Close();
+                    if (jsonAlarms != null)
                     {
-                        AddAlarm(k.Value);
+                        foreach (KeyValuePair<int, Alarm> k in jsonAlarms)
+                        {
+                            AddAlarm(k.Value);
+                        }
                     }
                 }
             }
+            
         }
 
         public void MainCycle()
@@ -51,20 +58,20 @@ namespace ReminderBot
             while (true)
             {
                 bool signaled;                
-                if (alarms.Count == 0)
+                if (_alarmIds.Count == 0)
                 {                    
-                    signaled = ewh.WaitOne(-1); //No alarms, so we wait until we get one                   
+                    signaled = _ewh.WaitOne(-1); //No alarms, so we wait until we get one                   
                 }
                 else
                 {
                     TimeSpan difference;
-                    lock (alarmLock)
+                    lock (_alarmLock)
                     { 
-                         difference = alarms.First().Key - DateTime.UtcNow;
+                         difference = _alarmIds.First().Key - DateTime.UtcNow;
                     }                    
                     if (difference > TimeSpan.Zero)
                     {                        
-                        signaled = ewh.WaitOne(difference);   //Wait until it's time to signal the alarm                                  
+                        signaled = _ewh.WaitOne(difference);   //Wait until it's time to signal the alarm                                  
                     }
                     else
                     {
@@ -95,40 +102,59 @@ namespace ReminderBot
 
         private void UpdateAlarms()
         {
-            if (alarms.Count <= 0)
+            if (_alarmIds.Count <= 0)
             {
                 return;
             }
 
-            lock (alarmLock)
+            lock (_alarmLock)
             { 
-                Alarm a = alarms.First().Value;
-                alarms.RemoveAt(0);
+                int id = _alarmIds.First().Value;
+                _alarmIds.RemoveAt(0);
+                if (!_alarms.ContainsKey(id))
+                {
+                    throw new ArgumentException("Alarm dictonary and id list has gotten out of sync. Report this to the developer.");
+                }
+
+                Alarm a = _alarms[id];
+                _alarms.Remove(id);                    
 
                 if (a.repeat > 0 || a.repeat == -1)
                 {
                     a.when = a.when.AddMinutes(a.interval);
-                    if(a.repeat > 0)
+                    if (a.repeat > 0)
                     {
                         a.repeat--;
                     }
 
                     AddAlarm(a);
                 }
+                
             }
 
-            //update json || database
+            lock (_jsonLock)
+            {
+                string fileLocation = Path.Combine(Environment.CurrentDirectory, "alarms.json");
+
+                File.WriteAllText(fileLocation,
+                    JsonConvert.SerializeObject(_alarms, Formatting.Indented));
+            }
         }
 
         private async void SendAlarm()
         {
-            if(alarms.Count == 0)
+            if(_alarmIds.Count == 0)
             {
                 return;
             }
 
-            Alarm a = alarms.First().Value;
+            int id = _alarmIds.First().Value;
+            if (!_alarms.ContainsKey(id))
+            {
+                throw new ArgumentException("Alarm dictonary and id list has gotten out of sync. Report this to the developer.");
+            }
 
+            Alarm a = _alarms[id];
             ISocketMessageChannel chn = _client.GetChannel(a.channelId) as ISocketMessageChannel;   
             if(chn == null)
             {
@@ -155,13 +181,14 @@ namespace ReminderBot
 
         public void AddAlarm(Alarm a)
         {            
-            lock (alarmLock)
+            lock (_alarmLock)
             {
-                alarms.Add(a.when, a);
+                _alarms.Add(a.alarmId, a);
+                _alarmIds.Add(a.when, a.alarmId);
 
-                if (ewh != default(EventWaitHandle))
+                if (_ewh != default(EventWaitHandle))
                 {                    
-                    ewh.Set();
+                    _ewh.Set();
                 }
             }            
         }        

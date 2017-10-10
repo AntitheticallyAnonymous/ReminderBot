@@ -14,12 +14,19 @@ namespace ReminderBot
     class CommandHandler
     {
         private readonly DiscordSocketClient _client;
+        private readonly Object _jsonLock;
 
-        public CommandHandler(DiscordSocketClient client)
+        public CommandHandler(DiscordSocketClient client, Object jsonLock)
         {
             _client = client;
+            _jsonLock = jsonLock;
         }
 
+        /**<summary>Checks the command and, if meant for this, processes the request</summary>
+        * <param name="msg">The message sent from discord</param>        
+        * <param name="prefix">The prefix that is to be considered for commands</param>
+        * <returns>Alarm that was parsed and added (if successful), otherwise null</returns>
+        */
         public async Task<Alarm> HandleCommand(SocketMessage msg, string prefix)
         {
             //Ignores empty and bot messages
@@ -30,19 +37,33 @@ namespace ReminderBot
 
             int id = ParseCommand(msg, prefix, out Alarm alarm);
             
-            if (id <= 0)
+            if (id > 0)
             {
                 await ReportErrorToUser(msg.Channel, id);
             }
             else
             {                
                 alarm.alarmId = AddAlarmEntry(alarm);
-                NotifyUser(_client.GetChannel(alarm.channelId) as ISocketMessageChannel);                
+                await NotifyUser(alarm);                
             }
 
             return alarm;
         }
 
+        /**<summary>Parses the message send in by discord and builds it into an <c>Alarm</c></summary>
+        * <param name="msg">The message sent from discord</param>        
+        * <param name="prefix">The prefix that is to be considered for commands</param>
+        * <param name="alarm">The alarm that was built</param>
+        * <returns>
+        * <para>1: Success</para>
+        * <para>0: Command ignored (not meant for this class)</para>
+        * <para>Negative: Errors</para>
+        * <para>-1: Only prefix provided</para>
+        * <para>-2: Invalid Prefix</para>
+        * <para>-3: Invalid Time</para>
+        * <para>-4: Missing when alarm should go off</para>
+        * </returns>
+        */
         private int ParseCommand(SocketMessage msg, string prefix, out Alarm alarm)
         {
             alarm = default(Alarm);            
@@ -93,9 +114,9 @@ namespace ReminderBot
          * <param name="command">Trimmed string from the user that contains the prefix and potentially other characters</param>
          * <param name="prefix">String that the command should be starting with</param>
          * <returns>
-         * <para> >=0: Repeat X number of times
-         * <para> -1: Repeat until removed
-         * <para> -2: Invalid command
+         * <para> >=0: Repeat X number of times</para>
+         * <para> -1: Repeat until removed</para>
+         * <para> -2: Invalid command</para>
          * </returns>
          */
         private int ParseRepeat(string command, string prefix)
@@ -168,7 +189,7 @@ namespace ReminderBot
             }
 
             //If time is in the past or is right now. Also determines if time wasn't given
-            if (when.CompareTo(DateTime.Now) <= 0)
+            if (when.CompareTo(DateTime.UtcNow) <= 0)
             {
                 whenEndpoint = 0;
             }
@@ -204,7 +225,11 @@ namespace ReminderBot
             }
             return alarmMessage;
         }
-
+     
+        /**<summary>Adds alarm to the database (if applicable). Otherwises adds it to a json file</summary>
+         * <param name="Alarm">The alarm to be added</param>
+         * <returns>The unique id given to the alarm</returns>
+         */
         private int AddAlarmEntry(Alarm a)
         {
             //TODO
@@ -214,45 +239,55 @@ namespace ReminderBot
             return AddAlarmEntryToJson(a);
         }
 
+        /**<summary>Adds alarm to a json file</summary>
+         * <param name="Alarm">The alarm to be added</param>
+         * <returns>The unique id given to the alarm</returns>
+         */
         private int AddAlarmEntryToJson(Alarm a)
         {
-            //TODO
-            //get lock
-
-            //Read json file
-            string fileLocation = Path.Combine(Environment.CurrentDirectory, "alarms.json");
-            Dictionary<int, Alarm> alarms = null;
-            if (File.Exists(fileLocation))
+            lock (_jsonLock)
             { 
-                StreamReader s = new StreamReader(fileLocation);            
-                string json = s.ReadToEnd();
-                alarms = JsonConvert.DeserializeObject<Dictionary<int, Alarm>>(json);
-                s.Close();
-            }
-            if(alarms == null)
-            {
-                alarms = new Dictionary<int, Alarm>();
-            }
+                //Read json file
+                string fileLocation = Path.Combine(Environment.CurrentDirectory, "alarms.json");
+                Dictionary<int, Alarm> alarms = null;
+                if (File.Exists(fileLocation))
+                { 
+                    StreamReader s = new StreamReader(fileLocation);            
+                    string json = s.ReadToEnd();
+                    alarms = JsonConvert.DeserializeObject<Dictionary<int, Alarm>>(json);
+                    s.Close();
+                }
+                if(alarms == null)
+                {
+                    alarms = new Dictionary<int, Alarm>();
+                }
 
-            //Find open id and add it to the list
-            a.alarmId = Enumerable.Range(0, int.MaxValue)
-                    .Except(alarms.Keys)
-                    .FirstOrDefault();
-            alarms.Add(a.alarmId, a);
+                //Find open id and add it to the list
+                a.alarmId = Enumerable.Range(0, int.MaxValue)
+                        .Except(alarms.Keys)
+                        .FirstOrDefault();
+                alarms.Add(a.alarmId, a);
                         
-            //Update json file
-            File.WriteAllText(fileLocation, 
-                JsonConvert.SerializeObject(alarms, Formatting.Indented));
+                //Update json file
+                File.WriteAllText(fileLocation, 
+                    JsonConvert.SerializeObject(alarms, Formatting.Indented));
+            }
 
             return a.alarmId;
         }
 
-        private bool AddAlarmEntryToDB(Alarm a)
+        /**<summary>Adds alarm to to the database</summary>
+         * <param name="Alarm">The alarm to be added</param>
+         * <returns>The unique id given to the alarm</returns>
+         */
+        private int AddAlarmEntryToDB(Alarm a)
         {
             //TODO
             return true;
         }
 
+        /** <summary>Sends message back to the sender indicating the error that occurred when parsing</summary>
+         */
         private async Task ReportErrorToUser(ISocketMessageChannel channel, int error)
         {
             //0 is ignored since that means the message wasn't meant for this bot
@@ -274,10 +309,18 @@ namespace ReminderBot
             }
         }
 
-        //Temporary function for manual testing (Class structures subject to change). Will be removed once I implement unit tests
-        public async void NotifyUser(ISocketMessageChannel chn)
-        {            
-            await chn.SendMessageAsync("Your alarm has been added.");
+        /** <summary>Notifies the user that their alarm was added.</summary>
+         * <param name="a">The alarm that was added</param>
+         */
+        private async Task NotifyUser(Alarm a)
+        {
+            ISocketMessageChannel chn = _client.GetChannel(a.channelId) as ISocketMessageChannel;
+
+            await chn.SendMessageAsync(_client.GetUser(a.userId).Username +
+                ", your alarm set to go off at " + a.when + " UTC has been added" +
+                ((a.repeat == 0) ? "." :
+                    " and will repeat " + ((a.repeat == -1) ? "" : a.repeat + " time(s) ") + "every " + a.interval + " minute(s)."));
+
         }
     }
 }

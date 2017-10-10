@@ -12,6 +12,7 @@ namespace ReminderBot
     class ReminderBot
     {
         private readonly DiscordSocketClient _client;
+        private readonly Object _jsonLock;
         private CommandHandler _reminders;
         private AlarmHandler _alarm;
         private Thread _alarmThread;
@@ -33,6 +34,9 @@ namespace ReminderBot
                 //Message cache used to check reactions, content of edited/deleted messages, etc.
                 MessageCacheSize = 50
             });
+            InitializeVariablesFromJson();
+            //if db isn't in json, create the lock
+            _jsonLock = new Object();
         }
 
         /* 
@@ -45,14 +49,13 @@ namespace ReminderBot
             _client.Log += new Logger().Log;
 
             //Add command handler(s)
-            _reminders = new CommandHandler(_client);                 
+            _reminders = new CommandHandler(_client, _jsonLock);                 
             _client.MessageReceived += HandleCommandAsync;
-            _client.Ready += StartAlarmHandler;
-            
-            InitializeVariablesFromJson();
+            _client.Ready += StartAlarmHandler;            
+                                 
             await ConnectToDiscord();
            
-            _alarm = new AlarmHandler(_client);            
+            _alarm = new AlarmHandler(_client, _jsonLock);            
             _alarmThread = new Thread(new ThreadStart(_alarm.MainCycle));            
             
             //Blocks until program is closed
