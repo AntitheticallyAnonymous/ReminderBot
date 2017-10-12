@@ -25,9 +25,9 @@ namespace ReminderBot
         /**<summary>Checks the command and, if meant for this, processes the request</summary>
         * <param name="msg">The message sent from discord</param>        
         * <param name="prefix">The prefix that is to be considered for commands</param>
-        * <returns>Alarm that was parsed and added (if successful), otherwise null</returns>
+        * <returns>Reminder that was parsed and added (if successful), otherwise null</returns>
         */
-        public async Task<Alarm> HandleCommand(SocketMessage msg, string prefix)
+        public async Task<Reminder> HandleCommand(SocketMessage msg, string prefix)
         {
             //Ignores empty and bot messages
             if (msg == null || msg.Author.IsBot)
@@ -35,25 +35,25 @@ namespace ReminderBot
                 return null;
             }
 
-            int id = ParseCommand(msg, prefix, out Alarm alarm);
+            int id = ParseCommand(msg, prefix, out Reminder reminder);
             
             if (id <= 0)
             {
-                await ReportErrorToUser(msg.Channel, id);
+                await ReportErrorToSender(msg.Channel, id);
             }
             else
             {                
-                alarm.alarmId = AddAlarmEntry(alarm);
-                await NotifyUser(alarm);                
+                reminder.reminderId = AddEntry(reminder);
+                await NotifySender(reminder);                
             }
 
-            return alarm;
+            return reminder;
         }
 
-        /**<summary>Parses the message send in by discord and builds it into an <c>Alarm</c></summary>
+        /**<summary>Parses the message send in by discord and builds it into an <c>Reminder</c></summary>
         * <param name="msg">The message sent from discord</param>        
         * <param name="prefix">The prefix that is to be considered for commands</param>
-        * <param name="alarm">The alarm that was built</param>
+        * <param name="reminder">The reminder that was built</param>
         * <returns>
         * <para>1: Success</para>
         * <para>0: Command ignored (not meant for this class)</para>
@@ -61,12 +61,12 @@ namespace ReminderBot
         * <para>-1: Only prefix provided</para>
         * <para>-2: Invalid Prefix</para>
         * <para>-3: Invalid Time</para>
-        * <para>-4: Missing when alarm should go off</para>
+        * <para>-4: Missing when reminder should go off</para>
         * </returns>
         */
-        private int ParseCommand(SocketMessage msg, string prefix, out Alarm alarm)
+        private int ParseCommand(SocketMessage msg, string prefix, out Reminder reminder)
         {
-            alarm = default(Alarm);            
+            reminder = default(Reminder);            
 
             //Checks if the message is meant for the bot
             if (msg.Content.StartsWith(prefix))
@@ -92,12 +92,12 @@ namespace ReminderBot
                         return -4;
                 }
 
-                string alarmMessage = ParseAlarmMessage(msg.Content, args, index, delimiters);
+                string reminderMessage = ParseReminderMessage(msg.Content, args, index, delimiters);
 
-                alarm = new AlarmBuilder()
+                reminder = new ReminderBuilder()
                     .ChannelId(msg.Channel.Id)
                     .Interval(interval)
-                    .Message(alarmMessage)
+                    .Message(reminderMessage)
                     .Repeat(repeat)
                     .UserId(msg.Author.Id)
                     .HasMention(msg.MentionedUsers.Count > 0 || msg.MentionedRoles.Count > 0)
@@ -110,7 +110,7 @@ namespace ReminderBot
             return 0;
         }
 
-        /** <summary>Determines how many times the alarm should go off</summary> 
+        /** <summary>Determines how many times the reminder should go off</summary> 
          * <param name="command">Trimmed string from the user that contains the prefix and potentially other characters</param>
          * <param name="prefix">String that the command should be starting with</param>
          * <returns>
@@ -142,13 +142,13 @@ namespace ReminderBot
             return repeat;
         }
 
-        /**<summary>Determines when the alarm should go off</summary>
+        /**<summary>Determines when the reminder should go off</summary>
          * <param name="args"> User's message that has been split up by spaces</param>
-         * <param name="when"> The time when the alarm should go off</param>
-         * <param name="interval">How frequently the alarm is to repeat in minutes (assuming it repeats)</param>
+         * <param name="when"> The time when the reminder should go off</param>
+         * <param name="interval">How frequently the reminder is to repeat in minutes (assuming it repeats)</param>
          * <returns> 
          * <para> Positive value: Position in <c>args</c> for last valid DateTime</para>
-         * <para> 0: Time for alarm is in the past or right now</para>
+         * <para> 0: Time for reminder is in the past or right now</para>
          * <para> -1: Invalid format for time</para>
          *  </returns>
          */
@@ -199,19 +199,19 @@ namespace ReminderBot
             return whenEndpoint;
         }
 
-        /**<summary>Parses the message that should be displayed when the alarm goes off</summary>
+        /**<summary>Parses the message that should be displayed when the reminder goes off</summary>
          * <param name="message">The original message sent by the user</param>
          * <param name="splitMessage">The original message split up into an array without spacing preserved</param>
          * <param name="whenEndpoint">Position in <c>splitMessage</c> for last valid DateTime</param>
-         * <returns>Message to be sent when the alarm goes off</returns>
+         * <returns>Message to be sent when the reminder goes off</returns>
          */
-        private string ParseAlarmMessage(string message, string[] splitMessage, int whenEndpoint, char[] delimiters)
+        private string ParseReminderMessage(string message, string[] splitMessage, int whenEndpoint, char[] delimiters)
         {
-            string alarmMessage = "";
-            whenEndpoint++; //If there is an alarm message, it appears after the whenEndpoint
+            string reminderMessage = "";
+            whenEndpoint++; //If there is an reminder message, it appears after the whenEndpoint
             if (whenEndpoint < splitMessage.Length)
             {
-                string trimmedMessage = alarmMessage;
+                string trimmedMessage = reminderMessage;
                 string targetTrimmedMessage = string.Join(" ", splitMessage, whenEndpoint, splitMessage.Length - whenEndpoint); //The message without spaces preserved
 
                 //Getting the message with spaces preserved
@@ -219,80 +219,82 @@ namespace ReminderBot
                 while (!trimmedMessage.Equals(targetTrimmedMessage) && i != -1)
                 {
                     i = message.IndexOf(splitMessage[whenEndpoint], i);
-                    alarmMessage = message.Substring(i);
-                    trimmedMessage = string.Join(" ", alarmMessage.Split(delimiters)); //Removes spaces in the middle                    
+                    reminderMessage = message.Substring(i);
+                    trimmedMessage = string.Join(" ", reminderMessage.Split(delimiters)); //Removes spaces in the middle                    
                 }
             }
-            return alarmMessage;
+            return reminderMessage;
         }
      
-        /**<summary>Adds alarm to the database (if applicable). Otherwises adds it to a json file</summary>
-         * <param name="Alarm">The alarm to be added</param>
-         * <returns>The unique id given to the alarm</returns>
+        /**<summary>Adds reminder to the database (if applicable). Otherwises adds it to a json file</summary>
+         * <param name="r">The reminder to be added</param>
+         * <returns>The unique id given to the reminder</returns>
          */
-        private int AddAlarmEntry(Alarm a)
+        private int AddEntry(Reminder r)
         {
             //TODO
             //IF DB EXISTS
             //RETURN ADD TO DB
             //ELSE
-            return AddAlarmEntryToJson(a);
+            return AddEntryToJson(r);
         }
 
-        /**<summary>Adds alarm to a json file</summary>
-         * <param name="Alarm">The alarm to be added</param>
-         * <returns>The unique id given to the alarm</returns>
+        /**<summary>Adds reminder to a json file</summary>
+         * <param name="r">The reminder to be added</param>
+         * <returns>The unique id given to the reminder</returns>
          */
-        private int AddAlarmEntryToJson(Alarm a)
+        private int AddEntryToJson(Reminder r)
         {
             lock (_jsonLock)
             { 
                 //Read json file
-                string fileLocation = Path.Combine(Environment.CurrentDirectory, "alarms.json");
-                Dictionary<int, Alarm> alarms = null;
+                string fileLocation = Path.Combine(Environment.CurrentDirectory, "reminders.json");
+                Dictionary<int, Reminder> reminders = null;
                 if (File.Exists(fileLocation))
                 { 
                     StreamReader s = new StreamReader(fileLocation);            
                     string json = s.ReadToEnd();
-                    alarms = JsonConvert.DeserializeObject<Dictionary<int, Alarm>>(json);
+                    reminders = JsonConvert.DeserializeObject<Dictionary<int, Reminder>>(json);
                     s.Close();
                 }
-                if(alarms == null)
+                if(reminders == null)
                 {
-                    alarms = new Dictionary<int, Alarm>();
+                    reminders = new Dictionary<int, Reminder>();
                 }
 
                 //Find open id and add it to the list
-                a.alarmId = Enumerable.Range(0, int.MaxValue)
-                        .Except(alarms.Keys)
+                r.reminderId = Enumerable.Range(0, int.MaxValue)
+                        .Except(reminders.Keys)
                         .FirstOrDefault();
-                alarms.Add(a.alarmId, a);
+                reminders.Add(r.reminderId, r);
                         
                 //Update json file
                 File.WriteAllText(fileLocation, 
-                    JsonConvert.SerializeObject(alarms, Formatting.Indented));
+                    JsonConvert.SerializeObject(reminders, Formatting.Indented));
             }
 
-            return a.alarmId;
+            return r.reminderId;
         }
 
-        /**<summary>Adds alarm to to the database</summary>
-         * <param name="Alarm">The alarm to be added</param>
-         * <returns>The unique id given to the alarm</returns>
+        /** <summary>Adds reminder to to the database</summary>
+         * <param name="r">The reminder to be added</param>
+         * <returns>The unique id given to the reminder</returns>
          */
-        private int AddAlarmEntryToDB(Alarm a)
+        private int AddEntryToDb(Reminder r)
         {
-            throw new NotImplementedException("AddAlarmEntryToDB");
+            throw new NotImplementedException("AddReminderEntryToDB");
         }
 
-        /** <summary>Sends message back to the sender indicating the error that occurred when parsing</summary>
+        /** <summary>Sends message back to the message sender indicating the error that occurred when parsing</summary>
+         * <param name="channel">The channel the sender sent the message in.</param>
+         * <param name="error"> The error code</param>
          */
-        private async Task ReportErrorToUser(ISocketMessageChannel channel, int error)
+        private async Task ReportErrorToSender(ISocketMessageChannel channel, int error)
         {
             //0 is ignored since that means the message wasn't meant for this bot
             if (error == -1)
             {
-                await channel.SendMessageAsync("Please provide a time for when the alarm should go off.");
+                await channel.SendMessageAsync("Please provide a time for when the reminder should go off.");
             }
             else if (error == -2)
             {
@@ -300,7 +302,7 @@ namespace ReminderBot
             }
             else if(error == -3)
             {
-                await channel.SendMessageAsync("Alarm cannot be set to a time in the past or the current time.");
+                await channel.SendMessageAsync("Reminder cannot be set to a time in the past or the current time.");
             }
             else if(error == -4)
             {
@@ -308,17 +310,17 @@ namespace ReminderBot
             }
         }
 
-        /** <summary>Notifies the user that their alarm was added.</summary>
-         * <param name="a">The alarm that was added</param>
+        /** <summary>Notifies the message sender that their reminder was added.</summary>
+         * <param name="r">The reminder that was added</param>
          */
-        private async Task NotifyUser(Alarm a)
+        private async Task NotifySender(Reminder r)
         {
-            ISocketMessageChannel chn = _client.GetChannel(a.channelId) as ISocketMessageChannel;
+            ISocketMessageChannel chn = _client.GetChannel(r.channelId) as ISocketMessageChannel;
 
-            await chn.SendMessageAsync(_client.GetUser(a.userId).Username +
-                ", your alarm set to go off at " + a.when + " UTC has been added" +
-                ((a.repeat == 0) ? "." :
-                    " and will repeat " + ((a.repeat == -1) ? "" : a.repeat + " time(s) ") + "every " + a.interval + " minute(s)."));
+            await chn.SendMessageAsync(_client.GetUser(r.userId).Username +
+                ", your reminder set to go off at " + r.when + " UTC has been added" +
+                ((r.repeat == 0) ? "." :
+                    " and will repeat " + ((r.repeat == -1) ? "" : r.repeat + " time(s) ") + "every " + r.interval + " minute(s)."));
 
         }
     }

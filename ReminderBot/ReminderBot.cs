@@ -14,8 +14,8 @@ namespace ReminderBot
         private readonly DiscordSocketClient _client;
         private readonly Object _jsonLock;
         private CommandHandler _reminders;
-        private AlarmHandler _alarm;
-        private Thread _alarmThread;
+        private ReminderHandler _reminder;
+        private Thread _reminderThread;
 
         //Values from json file
         private string _token;
@@ -56,8 +56,8 @@ namespace ReminderBot
                                  
             await ConnectToDiscord();
            
-            _alarm = new AlarmHandler(_client, _jsonLock);            
-            _alarmThread = new Thread(new ThreadStart(_alarm.MainCycle));            
+            _reminder = new ReminderHandler(_client, _jsonLock);            
+            _reminderThread = new Thread(new ThreadStart(_reminder.MainCycle));            
             
             //Blocks until program is closed
             await Task.Delay(-1);
@@ -66,14 +66,14 @@ namespace ReminderBot
         /**<summary>Code that executes when the bot's status is 'Ready'</summary>*/
         private Task OnReady()
         {
-            StartAlarmHandler();
+            StartReminderHandler();
             return Task.CompletedTask;
         }
 
-        /**<summary>Starts the thread for handling alarms</summary>*/
-        private Task StartAlarmHandler()
+        /**<summary>Starts the thread for handling reminders</summary>*/
+        private Task StartReminderHandler()
         {
-            _alarmThread.Start();
+            _reminderThread.Start();
             return Task.CompletedTask;
         }
 
@@ -82,23 +82,23 @@ namespace ReminderBot
          */
         private async Task HandleCommandAsync(SocketMessage message)
         {
-            await HandleAlarmCommand(message);
+            await HandleReminderCommand(message);
             return;
         }
 
-        /**<summary>Processes the message to see if it's an alarm request. Adds the alarm if it is and starts the timer</summary>
+        /**<summary>Processes the message to see if it's an reminder request. Adds the reminder if it is and starts the timer</summary>
          * <param name="message">The message sent in by discord</param>
          * <returns>
-         * <para>True: Message was a valid alarm request and was successfully added and started.</para>
-         * <para>False: Message was not a valid alarm request.</para>
+         * <para>True: Message was a valid reminder request and was successfully added and started.</para>
+         * <para>False: Message was not a valid reminder request.</para>
          * </returns>
          */
-        private async Task<bool> HandleAlarmCommand(SocketMessage message)
+        private async Task<bool> HandleReminderCommand(SocketMessage message)
         {
-            Alarm a = await _reminders.HandleCommand(message, _prefix);
-            if (a != null)
+            Reminder r = await _reminders.HandleCommand(message, _prefix);
+            if (r != null)
             {
-                _alarm.AddAlarm(a);
+                _reminder.AddReminder(r);
                 return true;
             }
 

@@ -2,9 +2,9 @@
 
 namespace ReminderBot
 {
-    class AlarmBuilder
+    class ReminderBuilder
     {
-        public int alarmId { get; set; }
+        public int reminderId { get; set; }
         public DateTime when { get; set; }
         public string message { get; set; }
         public ulong userId { get; set; }
@@ -13,21 +13,21 @@ namespace ReminderBot
         public int repeat { get; set; }
         public bool hasMention { get; set; }
 
-        public AlarmBuilder() { } //In case more constructors are added
+        public ReminderBuilder() { } //In case more constructors are added
 
-        public AlarmBuilder AlarmId(int a)
+        public ReminderBuilder ReminderId(int r)
         {
-            this.alarmId = a;
+            this.reminderId = r;
             return this;
         }
 
-        public AlarmBuilder When(DateTime w)
+        public ReminderBuilder When(DateTime w)
         {
             this.when = w;
             return this;
         }
 
-        public AlarmBuilder Message(string m)
+        public ReminderBuilder Message(string m)
         {
             if (m == null)
             {
@@ -38,36 +38,36 @@ namespace ReminderBot
             return this;
         }
 
-        public AlarmBuilder UserId(ulong u)
+        public ReminderBuilder UserId(ulong u)
         {
             this.userId = u;
             return this;
         }
 
-        public AlarmBuilder ChannelId(ulong c)
+        public ReminderBuilder ChannelId(ulong c)
         {
             this.channelId = c;
             return this;
         }
 
-        public AlarmBuilder Interval(int i)
+        public ReminderBuilder Interval(int i)
         {
             this.interval = i;
             return this;
         }
 
-        public AlarmBuilder Repeat(int r)
+        public ReminderBuilder Repeat(int r)
         {
             this.repeat = r;
             return this;
         }
 
-        public Alarm Build()
+        public Reminder Build()
         {
-            return new Alarm(this);
+            return new Reminder(this);
         }
 
-        public AlarmBuilder HasMention(bool m)
+        public ReminderBuilder HasMention(bool m)
         {
             this.hasMention = m;
             return this;

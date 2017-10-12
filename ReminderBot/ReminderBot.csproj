@@ -137,9 +137,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Alarm.cs" />
-    <Compile Include="AlarmBuilder.cs" />
-    <Compile Include="AlarmHandler.cs" />
+    <Compile Include="Reminder.cs" />
+    <Compile Include="ReminderBuilder.cs" />
+    <Compile Include="ReminderHandler.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
