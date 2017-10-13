@@ -63,7 +63,8 @@ namespace ReminderBot
         {                        
             while (true)
             {
-                bool signaled;                
+                bool signaled;
+                
                 if (_reminderIds.Count == 0)
                 {                    
                     signaled = _ewh.WaitOne(-1); //No reminders, so we wait until we get one                   
@@ -81,7 +82,7 @@ namespace ReminderBot
                     }
                     else
                     {
-                        //TODO?: ADD LEEWAY TO CONFIG INSTEAD OF HARDCODING
+                        //TODO(?): Allow option to set leeway in config
                         if (difference.TotalMinutes >= -1) //Allow some leeway 'cause calucations aren't instantenous
                         {                                                     
                             signaled = false;                            
@@ -100,8 +101,12 @@ namespace ReminderBot
                     if (_client.ConnectionState == Discord.ConnectionState.Connected)
                     {
                         SendReminder();
-                        UpdateReminders();
+                        UpdateReminders();                        
                     }
+                }
+                else
+                {
+                    _ewh.Reset(); //Lets waitone block again
                 }
             }
         }
