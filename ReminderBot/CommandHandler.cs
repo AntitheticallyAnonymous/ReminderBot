@@ -28,14 +28,14 @@ namespace ReminderBot
         * <returns>Reminder that was parsed and added (if successful), otherwise null</returns>
         */
         public async Task<Reminder> HandleCommand(SocketMessage msg, string prefix)
-        {
+        {            
             //Ignores empty and bot messages
             if (msg == null || msg.Author.IsBot)
             {
                 return null;
             }
 
-            int id = ParseCommand(msg, prefix, out Reminder reminder);
+            int id = ParseCommand(msg, prefix, out Reminder reminder);            
             
             if (id <= 0)
             {
@@ -43,7 +43,7 @@ namespace ReminderBot
             }
             else
             {                
-                reminder.reminderId = AddEntry(reminder);
+                reminder.reminderId = AddEntry(reminder);                
                 await NotifySender(reminder);                
             }
 
@@ -82,7 +82,7 @@ namespace ReminderBot
                 if (repeat < -1) //Invalid prefix
                     return -2;
 
-                int index = ParseWhen(args, out DateTime when, out int interval);
+                int index = ParseWhen(args, msg.Timestamp.UtcDateTime, out DateTime when, out int interval);
 
                 if (index <= 0)
                 {
@@ -144,6 +144,7 @@ namespace ReminderBot
 
         /**<summary>Determines when the reminder should go off</summary>
          * <param name="args"> User's message that has been split up by spaces</param>
+         * <param name="timestamp"> The timestamp on the message from the sender</param>
          * <param name="when"> The time when the reminder should go off</param>
          * <param name="interval">How frequently the reminder is to repeat in minutes (assuming it repeats)</param>
          * <returns> 
@@ -152,7 +153,7 @@ namespace ReminderBot
          * <para> -1: Invalid format for time</para>
          *  </returns>
          */
-        private int ParseWhen(string[] args, out DateTime when, out int interval)
+        private int ParseWhen(string[] args, DateTime timestamp, out DateTime when, out int interval)
         {
             interval = 1440; //Minutes in a day; Only changes if when was given in minutes instead of a DateTime
             when = default(DateTime);
@@ -176,7 +177,7 @@ namespace ReminderBot
             {
                 if (int.TryParse(args[1], out interval))
                 {
-                    when = DateTime.UtcNow.AddMinutes(interval);
+                    when = timestamp.AddMinutes(interval);
                     if (interval == 0)
                     {
                         whenEndpoint = 0;
@@ -318,9 +319,12 @@ namespace ReminderBot
             ISocketMessageChannel chn = _client.GetChannel(r.channelId) as ISocketMessageChannel;
 
             await chn.SendMessageAsync(_client.GetUser(r.userId).Username +
-                ", your reminder set to go off at " + r.when + " UTC has been added" +
+                ", your reminder set to go off " + ((r.interval == 1440) ? ("at " + r.when + " UTC") :
+                    ("in " + r.interval + " minute(s)"))
+                + " has been added" +
                 ((r.repeat == 0) ? "." :
-                    " and will repeat " + ((r.repeat == -1) ? "" : r.repeat + " time(s) ") + "every " + r.interval + " minute(s)."));
+                    " and will repeat " + ((r.repeat == -1) ? "" : r.repeat + " time(s) ") + "every " + r.interval + " minute(s).")
+                + " [" + r.reminderId + "]");
 
         }
     }
