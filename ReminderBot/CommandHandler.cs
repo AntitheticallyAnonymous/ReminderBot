@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -82,7 +83,7 @@ namespace ReminderBot
                 if (repeat < -1) //Invalid prefix
                     return -2;
 
-                int index = ParseWhen(args, msg.Timestamp.UtcDateTime, out DateTime when, out int interval);
+                int index = ParseWhen(args, msg.Timestamp, out DateTimeOffset when, out int interval);
 
                 if (index <= 0)
                 {
@@ -148,31 +149,32 @@ namespace ReminderBot
          * <param name="when"> The time when the reminder should go off</param>
          * <param name="interval">How frequently the reminder is to repeat in minutes (assuming it repeats)</param>
          * <returns> 
-         * <para> Positive value: Position in <c>args</c> for last valid DateTime</para>
+         * <para> Positive value: Position in <c>args</c> for last valid DateTimeOffset</para>
          * <para> 0: Time for reminder is in the past or right now</para>
          * <para> -1: Invalid format for time</para>
          *  </returns>
          */
-        private int ParseWhen(string[] args, DateTime timestamp, out DateTime when, out int interval)
+        private int ParseWhen(string[] args, DateTimeOffset timestamp, out DateTimeOffset when, out int interval)
         {
-            interval = 1440; //Minutes in a day; Only changes if when was given in minutes instead of a DateTime
-            when = default(DateTime);
+            interval = 1440; //Minutes in a day; Only changes if when was given in minutes instead of a DateTimeOffset
+            when = default(DateTimeOffset);
 
-            int whenEndpoint = -1; //Keeps track of last valid position for DateTime in arg
+            int whenEndpoint = -1; //Keeps track of last valid position for DateTimeOffset in arg
 
-            //Checks to see if time was given as a datetime and tries to parse it.            
+            //Checks to see if time was given as a DateTimeOffset and tries to parse it.            
             string temp = "";
             for (int i = 1; i < args.Length; i++)
             {
                 temp += " " + args[i];
-                if (DateTime.TryParse(temp, out var output))
+                if (DateTimeOffset.TryParse(temp, null as IFormatProvider, DateTimeStyles.AssumeUniversal,out var output))
                 {
+                    Console.WriteLine(output);
                     when = output;
                     whenEndpoint = i;
                 }
             }
 
-            //If time wasn't given in a datetime format, we check to see if it was given in minutes
+            //If time wasn't given in a DateTimeOffset format, we check to see if it was given in minutes
             if (whenEndpoint == -1)
             {
                 if (int.TryParse(args[1], out interval))
@@ -190,11 +192,10 @@ namespace ReminderBot
             }
 
             //If time is in the past or is right now. Also determines if time wasn't given
-            if (when.CompareTo(DateTime.UtcNow) <= 0)
+            if (when.CompareTo(DateTimeOffset.Now) <= 0)
             {
                 whenEndpoint = 0;
-            }
-
+            }            
             //TODO: Handle time zones and daylight savings time
 
             return whenEndpoint;
@@ -203,7 +204,7 @@ namespace ReminderBot
         /**<summary>Parses the message that should be displayed when the reminder goes off</summary>
          * <param name="message">The original message sent by the user</param>
          * <param name="splitMessage">The original message split up into an array without spacing preserved</param>
-         * <param name="whenEndpoint">Position in <c>splitMessage</c> for last valid DateTime</param>
+         * <param name="whenEndpoint">Position in <c>splitMessage</c> for last valid DateTimeOffset</param>
          * <returns>Message to be sent when the reminder goes off</returns>
          */
         private string ParseReminderMessage(string message, string[] splitMessage, int whenEndpoint, char[] delimiters)
@@ -319,7 +320,7 @@ namespace ReminderBot
             ISocketMessageChannel chn = _client.GetChannel(r.channelId) as ISocketMessageChannel;
 
             await chn.SendMessageAsync(_client.GetUser(r.userId).Username +
-                ", your reminder set to go off " + ((r.interval == 1440) ? ("at " + r.when + " UTC") :
+                ", your reminder set to go off " + ((r.interval == 1440) ? ("at " + r.when) :
                     ("in " + r.interval + " minute(s)"))
                 + " has been added" +
                 ((r.repeat == 0) ? "." :

@@ -5,7 +5,7 @@ namespace ReminderBot
     class Reminder
     {
         public int reminderId { get; set; }
-        public DateTime when { get; set; }
+        public DateTimeOffset when { get; set; }
         public string message { get; set; }
         public ulong userId { get; set; }
         public ulong channelId { get; set; }
@@ -16,7 +16,7 @@ namespace ReminderBot
         public Reminder() { } //For serializing and deserializing; Probably not safe
         public Reminder(ReminderBuilder r)
         {
-            if (default(DateTime) == r.when)
+            if (default(DateTimeOffset) == r.when)
             {
                 throw new ArgumentNullException("An reminder has not been set or has been set to an invalid time");
             }

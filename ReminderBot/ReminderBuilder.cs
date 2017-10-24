@@ -5,7 +5,7 @@ namespace ReminderBot
     class ReminderBuilder
     {
         public int reminderId { get; set; }
-        public DateTime when { get; set; }
+        public DateTimeOffset when { get; set; }
         public string message { get; set; }
         public ulong userId { get; set; }
         public ulong channelId { get; set; }
@@ -21,7 +21,7 @@ namespace ReminderBot
             return this;
         }
 
-        public ReminderBuilder When(DateTime w)
+        public ReminderBuilder When(DateTimeOffset w)
         {
             this.when = w;
             return this;

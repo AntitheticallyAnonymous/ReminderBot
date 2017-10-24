@@ -12,7 +12,7 @@ namespace ReminderBot
     class ReminderHandler
     {
         private readonly DiscordSocketClient _client;
-        private static SortedList<DateTime, int> _reminderIds;
+        private static SortedList<DateTimeOffset, int> _reminderIds;
         private static Dictionary<int, Reminder> _reminders;
         private EventWaitHandle _ewh;
         private readonly Object _reminderLock = new Object();
@@ -21,7 +21,7 @@ namespace ReminderBot
         public ReminderHandler(DiscordSocketClient c, Object jsonLock)
         {
             _client = c;
-            _reminderIds = new SortedList<DateTime, int>();
+            _reminderIds = new SortedList<DateTimeOffset, int>(new DuplicateKeyComparer<DateTimeOffset>());
             _reminders = new Dictionary<int, Reminder>();
             _jsonLock = jsonLock;
             AddRemindersFromJson();            
@@ -74,7 +74,7 @@ namespace ReminderBot
                     TimeSpan difference;
                     lock (_reminderLock)
                     { 
-                         difference = _reminderIds.First().Key - DateTime.UtcNow;
+                         difference = _reminderIds.First().Key - DateTimeOffset.UtcNow;
                     }                    
                     if (difference > TimeSpan.Zero)
                     {                        
@@ -186,7 +186,7 @@ namespace ReminderBot
 
             Reminder r = _reminders[id];
             
-            if (r.when > DateTime.UtcNow)
+            if (r.when > DateTimeOffset.UtcNow)
             {
                 return;
             }
