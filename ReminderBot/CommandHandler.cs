@@ -122,7 +122,21 @@ namespace ReminderBot
          */
         private int ParseRepeat(string command, string prefix)
         {
-            int repeat = 0;
+            int repeat = 0;            
+
+            if(prefix == null || prefix.Trim() == "")
+            {
+                throw new ArgumentNullException("prefix", "Check credentials file.");
+            }
+            if(command == null || command.Trim() == "")
+            {
+                throw new ArgumentNullException("command");
+            }
+
+            if (prefix == null || prefix == "")
+            {
+                throw new ArgumentNullException("Prefix cannot be null or empty.");
+            }
 
             if (Regex.IsMatch(command, @"^" + prefix + @"[0-9]\d*$")) //repeat x times
             {
@@ -144,20 +158,26 @@ namespace ReminderBot
         }
 
         /**<summary>Determines when the reminder should go off</summary>
-         * <param name="args"> User's message that has been split up by spaces</param>
-         * <param name="timestamp"> The timestamp on the message from the sender</param>
-         * <param name="when"> The time when the reminder should go off</param>
-         * <param name="interval">How frequently the reminder is to repeat in minutes (assuming it repeats)</param>
+         * <param name="args"> User's message that has been split up by spaces.</param>
+         * <param name="timestamp"> The timestamp on the message from the sender.</param>
+         * <param name="when"> The time when the reminder should go off.</param>
+         * <param name="interval">How frequently the reminder is to repeat in minutes.</param>
          * <returns> 
-         * <para> Positive value: Position in <c>args</c> for last valid DateTimeOffset</para>
-         * <para> 0: Time for reminder is in the past or right now</para>
-         * <para> -1: Invalid format for time</para>
+         * <para> Positive value: Position in <c>args</c> for last valid DateTimeOffset.</para>
+         * <para> 0: Time for reminder is in the past or right now.</para>
+         * <para> -1: Invalid format for time.</para>
          *  </returns>
          */
         private int ParseWhen(string[] args, DateTimeOffset timestamp, out DateTimeOffset when, out int interval)
         {
+
             interval = 1440; //Minutes in a day; Only changes if when was given in minutes instead of a DateTimeOffset
             when = default(DateTimeOffset);
+
+            if (args.Length <= 1)
+            {
+                return -1;
+            }
 
             int whenEndpoint = -1; //Keeps track of last valid position for DateTimeOffset in arg
 
@@ -166,9 +186,8 @@ namespace ReminderBot
             for (int i = 1; i < args.Length; i++)
             {
                 temp += " " + args[i];
-                if (DateTimeOffset.TryParse(temp, null as IFormatProvider, DateTimeStyles.AssumeUniversal,out var output))
+                if (DateTimeOffset.TryParse(temp, null as IFormatProvider, DateTimeStyles.AssumeUniversal, out var output))
                 {
-                    Console.WriteLine(output);
                     when = output;
                     whenEndpoint = i;
                 }
@@ -187,16 +206,26 @@ namespace ReminderBot
                     else
                     {
                         whenEndpoint = 1;
-                    }                        
+                    }
+                }
+                else
+                {
+                    return -1;
+                }
+
+                if (timestamp.Equals(default(DateTimeOffset)))
+                {
+                    return -1;
                 }
             }
 
-            //If time is in the past or is right now. Also determines if time wasn't given
-            if (when.CompareTo(DateTimeOffset.Now) <= 0)
+            
+
+            //If time is in the past or is right now. Also determines if time wasn't given            
+            if (when.CompareTo(TimeProvider.Current.UtcNow) <= 0)
             {
                 whenEndpoint = 0;
             }            
-            //TODO: Handle time zones and daylight savings time
 
             return whenEndpoint;
         }
